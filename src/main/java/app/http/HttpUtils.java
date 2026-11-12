@@ -5,8 +5,8 @@ import app.exception.ResourceNotFoundException;
 import app.exception.ValidationException;
 import app.model.SessionStatus;
 import app.model.SubscriptionTier;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
-import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -17,7 +17,7 @@ import java.util.Map;
 
 public class HttpUtils {
 
-    private static final JsonMapper MAPPER = JsonMapper.builder().build();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     public static void sendJson(HttpExchange exchange, int statusCode, Object body) throws IOException {
         byte[] bytes = MAPPER.writeValueAsBytes(body);

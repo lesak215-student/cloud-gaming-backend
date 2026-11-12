@@ -1,8 +1,8 @@
 package app;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -10,7 +10,7 @@ import java.util.Map;
 
 public class PingHandler implements HttpHandler {
 
-    private final JsonMapper mapper = JsonMapper.builder().build();
+    private final ObjectMapper mapper = new ObjectMapper();
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
