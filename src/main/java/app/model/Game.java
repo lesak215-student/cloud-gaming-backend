@@ -37,6 +37,13 @@ public class Game {
         return maxSlots;
     }
 
+    public boolean allowsTier(SubscriptionTier userTier) {
+        if (this.requiredTier == SubscriptionTier.BASIC) {
+            return true;
+        }
+        return userTier == SubscriptionTier.PREMIUM;
+    }
+
     public Game withDetails(String newTitle, String newGenre, SubscriptionTier newTier, int newMaxSlots) {
         return new Game(this.id, newTitle, newGenre, newTier, newMaxSlots);
     }

@@ -29,8 +29,6 @@ public abstract class User {
 
     public abstract int getMaxConcurrentSessions();
 
-    public abstract int getMaxSessionDurationMinutes();
-
     public abstract int getMaxStreamingResolution();
 
     public abstract boolean canPlayGame(Game game);

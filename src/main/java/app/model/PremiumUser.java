@@ -17,11 +17,6 @@ public class PremiumUser extends User {
     }
 
     @Override
-    public int getMaxSessionDurationMinutes() {
-        return 360;
-    }
-
-    @Override
     public int getMaxStreamingResolution() {
         return 2160;
     }
