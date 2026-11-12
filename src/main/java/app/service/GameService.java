@@ -51,7 +51,7 @@ public class GameService {
             throw new BusinessRuleException("Cannot decrease max slots below current active sessions count: " + activeSessions);
         }
 
-        if (existing.getRequiredTier() != requiredTier && (sessionRepository.hasActiveOrPausedSessionForGame(id) || activeSessions > 0)) {
+        if (existing.getRequiredTier() != requiredTier && activeSessions > 0) {
             throw new BusinessRuleException("Cannot change required tier of game that has active or paused sessions");
         }
 
