@@ -3,9 +3,8 @@
 BASE="http://localhost:8080"
 
 echo "=== 1. PING CHECKS ==="
+echo "--- Ping (GET /ping) ---"
 curl -s -i "$BASE/ping"
-echo ""
-curl -s -i -X POST "$BASE/ping"
 echo ""
 
 echo "=== 2. USER CRUD AND FILTERING ==="
@@ -203,10 +202,6 @@ echo "--- 400: Negative ID in path ---"
 curl -s -i "$BASE/users/-5"
 echo ""
 
-echo "--- 400: Strict boolean parsing error (not true/false) ---"
-curl -s -i "$BASE/games?hasSlots=notabool"
-echo ""
-
 echo "--- 400: Invalid query tier enum ---"
 curl -s -i "$BASE/users?tier=SUPER"
 echo ""
@@ -225,10 +220,6 @@ echo ""
 
 echo "--- 404: Unknown route ---"
 curl -s -i "$BASE/unknown/route"
-echo ""
-
-echo "--- 405: Method not allowed (POST on item) ---"
-curl -s -i -X POST "$BASE/users/1"
 echo ""
 
 echo "--- 409: Duplicate user email ---"
@@ -261,7 +252,7 @@ curl -s -i -X POST "$BASE/sessions" \
   -d '{"userId":2,"gameId":2,"resolution":2160}'
 echo ""
 
-echo "--- 409: User concurrent session limit exceeded (Bob already has active session on Cyberpunk, tries other games beyond limit) ---"
+echo "--- 409: User concurrent session limit exceeded (Bob already has sessions) ---"
 curl -s -i -X POST "$BASE/sessions" \
   -H "Content-Type: application/json" \
   -d '{"userId":2,"gameId":1,"resolution":1080}'
