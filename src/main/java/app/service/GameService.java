@@ -7,10 +7,13 @@ import app.model.Game;
 import app.model.SubscriptionTier;
 import app.repository.GameRepository;
 import app.repository.GamingSessionRepository;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class GameService {
+
     private final GameRepository gameRepository;
     private final GamingSessionRepository sessionRepository;
 
@@ -19,7 +22,7 @@ public class GameService {
         this.sessionRepository = sessionRepository;
     }
 
-    public synchronized Game create(String title, String genre, SubscriptionTier requiredTier, int maxSlots) {
+    public Game create(String title, String genre, SubscriptionTier requiredTier, int maxSlots) {
         validateGameData(title, genre, requiredTier, maxSlots);
         String trimmedTitle = title.trim();
         if (gameRepository.findByTitle(trimmedTitle).isPresent()) {
@@ -29,7 +32,7 @@ public class GameService {
         return gameRepository.save(game);
     }
 
-    public synchronized Game update(Long id, String title, String genre, SubscriptionTier requiredTier, int maxSlots) {
+    public Game update(Long id, String title, String genre, SubscriptionTier requiredTier, int maxSlots) {
         if (id == null || id <= 0) {
             throw new ValidationException("Game id must be a positive integer");
         }
@@ -46,6 +49,10 @@ public class GameService {
         long activeSessions = sessionRepository.countActiveOrPausedSessionsByGameId(id);
         if (maxSlots < activeSessions) {
             throw new BusinessRuleException("Cannot decrease max slots below current active sessions count: " + activeSessions);
+        }
+
+        if (existing.getRequiredTier() != requiredTier && (sessionRepository.hasActiveOrPausedSessionForGame(id) || activeSessions > 0)) {
+            throw new BusinessRuleException("Cannot change required tier of game that has active or paused sessions");
         }
 
         Game updated = existing.withDetails(trimmedTitle, genre.trim(), requiredTier, maxSlots);
@@ -74,7 +81,7 @@ public class GameService {
                 .toList();
     }
 
-    public synchronized void delete(Long id) {
+    public void delete(Long id) {
         if (id == null || id <= 0) {
             throw new ValidationException("Game id must be a positive integer");
         }
