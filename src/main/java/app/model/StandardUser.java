@@ -17,11 +17,6 @@ public class StandardUser extends User {
     }
 
     @Override
-    public int getMaxSessionDurationMinutes() {
-        return 60;
-    }
-
-    @Override
     public int getMaxStreamingResolution() {
         return 1080;
     }

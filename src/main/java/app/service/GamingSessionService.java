@@ -10,11 +10,14 @@ import app.model.User;
 import app.repository.GameRepository;
 import app.repository.GamingSessionRepository;
 import app.repository.UserRepository;
+import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
 
+@Service
 public class GamingSessionService {
+
     private final GamingSessionRepository sessionRepository;
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
@@ -25,12 +28,15 @@ public class GamingSessionService {
         this.gameRepository = gameRepository;
     }
 
-    public synchronized GamingSession start(Long userId, Long gameId, Integer resolution) {
+    public GamingSession start(Long userId, Long gameId, Integer resolution) {
         if (userId == null || userId <= 0) {
             throw new ValidationException("User id must be a positive integer");
         }
         if (gameId == null || gameId <= 0) {
             throw new ValidationException("Game id must be a positive integer");
+        }
+        if (resolution != null && resolution <= 0) {
+            throw new ValidationException("Resolution must be a positive integer");
         }
 
         User user = userRepository.findById(userId)
@@ -38,7 +44,7 @@ public class GamingSessionService {
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new ResourceNotFoundException("Game not found with id: " + gameId));
 
-        int effectiveResolution = (resolution == null || resolution <= 0) ? user.getMaxStreamingResolution() : resolution;
+        int effectiveResolution = (resolution == null) ? user.getMaxStreamingResolution() : resolution;
         if (effectiveResolution > user.getMaxStreamingResolution()) {
             throw new BusinessRuleException("Resolution " + effectiveResolution + "p exceeds maximum allowed for user tier: " + user.getMaxStreamingResolution() + "p");
         }
@@ -61,7 +67,7 @@ public class GamingSessionService {
         return sessionRepository.save(session);
     }
 
-    public synchronized GamingSession pause(Long id) {
+    public GamingSession pause(Long id) {
         GamingSession session = getById(id);
         if (session.getStatus() != SessionStatus.ACTIVE) {
             throw new BusinessRuleException("Cannot pause session with status: " + session.getStatus());
@@ -70,7 +76,7 @@ public class GamingSessionService {
         return sessionRepository.save(updated);
     }
 
-    public synchronized GamingSession resume(Long id) {
+    public GamingSession resume(Long id) {
         GamingSession session = getById(id);
         if (session.getStatus() != SessionStatus.PAUSED) {
             throw new BusinessRuleException("Cannot resume session with status: " + session.getStatus());
@@ -79,7 +85,7 @@ public class GamingSessionService {
         return sessionRepository.save(updated);
     }
 
-    public synchronized GamingSession terminate(Long id) {
+    public GamingSession terminate(Long id) {
         GamingSession session = getById(id);
         if (session.getStatus() == SessionStatus.COMPLETED) {
             throw new BusinessRuleException("Session is already completed");
@@ -88,7 +94,7 @@ public class GamingSessionService {
         return sessionRepository.save(updated);
     }
 
-    public synchronized GamingSession update(Long id, Integer newResolution) {
+    public GamingSession update(Long id, Integer newResolution) {
         if (newResolution == null || newResolution <= 0) {
             throw new ValidationException("New resolution must be a positive integer");
         }
@@ -117,7 +123,7 @@ public class GamingSessionService {
         return sessionRepository.findAll(userIdFilter, gameIdFilter, statusFilter);
     }
 
-    public synchronized void delete(Long id) {
+    public void delete(Long id) {
         GamingSession session = getById(id);
         if (session.getStatus() != SessionStatus.COMPLETED) {
             throw new BusinessRuleException("Cannot delete session that is not completed; terminate it first");

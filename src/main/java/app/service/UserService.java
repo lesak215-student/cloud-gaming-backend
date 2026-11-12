@@ -9,10 +9,13 @@ import app.model.SubscriptionTier;
 import app.model.User;
 import app.repository.GamingSessionRepository;
 import app.repository.UserRepository;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class UserService {
+
     private final UserRepository userRepository;
     private final GamingSessionRepository sessionRepository;
 
@@ -21,7 +24,7 @@ public class UserService {
         this.sessionRepository = sessionRepository;
     }
 
-    public synchronized User create(String name, String email, SubscriptionTier tier) {
+    public User create(String name, String email, SubscriptionTier tier) {
         validateUserData(name, email, tier);
         String trimmedEmail = email.trim();
         if (userRepository.findByEmail(trimmedEmail).isPresent()) {
@@ -31,7 +34,7 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public synchronized User update(Long id, String name, String email, SubscriptionTier tier) {
+    public User update(Long id, String name, String email, SubscriptionTier tier) {
         if (id == null || id <= 0) {
             throw new ValidationException("User id must be a positive integer");
         }
@@ -65,7 +68,7 @@ public class UserService {
         return userRepository.findAll(tierFilter);
     }
 
-    public synchronized void delete(Long id) {
+    public void delete(Long id) {
         if (id == null || id <= 0) {
             throw new ValidationException("User id must be a positive integer");
         }

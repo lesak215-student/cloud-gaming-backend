@@ -50,6 +50,18 @@ public class GamingSession {
         return status;
     }
 
+    public boolean isActive() {
+        return status == SessionStatus.ACTIVE;
+    }
+
+    public boolean isPaused() {
+        return status == SessionStatus.PAUSED;
+    }
+
+    public boolean isCompleted() {
+        return status == SessionStatus.COMPLETED;
+    }
+
     public GamingSession paused() {
         return new GamingSession(id, userId, gameId, startedAt, endedAt, resolution, SessionStatus.PAUSED);
     }
