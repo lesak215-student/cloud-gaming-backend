@@ -5,6 +5,9 @@ import app.http.SessionHandler;
 import app.http.UserHandler;
 import app.repository.GameRepository;
 import app.repository.GamingSessionRepository;
+import app.repository.InMemoryGameRepository;
+import app.repository.InMemoryGamingSessionRepository;
+import app.repository.InMemoryUserRepository;
 import app.repository.UserRepository;
 import app.service.GameService;
 import app.service.GamingSessionService;
@@ -20,9 +23,9 @@ public class Main {
     private static final int PORT = 8080;
 
     public static void main(String[] args) throws IOException {
-        UserRepository userRepository = new UserRepository();
-        GameRepository gameRepository = new GameRepository();
-        GamingSessionRepository sessionRepository = new GamingSessionRepository();
+        UserRepository userRepository = new InMemoryUserRepository();
+        GameRepository gameRepository = new InMemoryGameRepository();
+        GamingSessionRepository sessionRepository = new InMemoryGamingSessionRepository();
 
         UserService userService = new UserService(userRepository, sessionRepository);
         GameService gameService = new GameService(gameRepository, sessionRepository);
