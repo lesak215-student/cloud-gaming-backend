@@ -8,10 +8,12 @@ import app.model.SubscriptionTier;
 import app.repository.GameRepository;
 import app.repository.GamingSessionRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional
 public class GameService {
 
     private final GameRepository gameRepository;
@@ -91,6 +93,7 @@ public class GameService {
         if (sessionRepository.hasActiveOrPausedSessionForGame(id)) {
             throw new BusinessRuleException("Cannot delete game that has active or paused sessions");
         }
+        sessionRepository.deleteByGameId(id);
         gameRepository.deleteById(id);
     }
 

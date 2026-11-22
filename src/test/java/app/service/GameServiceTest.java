@@ -29,8 +29,8 @@ class GameServiceTest {
 
     @BeforeEach
     void setUp() {
-        gameRepository = new InMemoryGameRepository();
-        sessionRepository = new InMemoryGamingSessionRepository();
+        gameRepository = InMemoryGameRepository.create();
+        sessionRepository = InMemoryGamingSessionRepository.create();
         gameService = new GameService(gameRepository, sessionRepository);
     }
 

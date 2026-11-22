@@ -29,8 +29,8 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userRepository = new InMemoryUserRepository();
-        sessionRepository = new InMemoryGamingSessionRepository();
+        userRepository = InMemoryUserRepository.create();
+        sessionRepository = InMemoryGamingSessionRepository.create();
         userService = new UserService(userRepository, sessionRepository);
     }
 

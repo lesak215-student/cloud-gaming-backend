@@ -2,21 +2,23 @@ package app.repository;
 
 import app.model.SubscriptionTier;
 import app.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface UserRepository {
-
-    User save(User user);
-
-    Optional<User> findById(Long id);
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
 
-    List<User> findAll(SubscriptionTier tierFilter);
+    List<User> findAllBySubscriptionTier(SubscriptionTier subscriptionTier);
 
-    boolean existsById(Long id);
-
-    void deleteById(Long id);
+    default List<User> findAll(SubscriptionTier tierFilter) {
+        if (tierFilter == null) {
+            return findAll();
+        }
+        return findAllBySubscriptionTier(tierFilter);
+    }
 }

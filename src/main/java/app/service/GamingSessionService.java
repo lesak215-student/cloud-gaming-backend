@@ -11,11 +11,13 @@ import app.repository.GameRepository;
 import app.repository.GamingSessionRepository;
 import app.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
 
 @Service
+@Transactional
 public class GamingSessionService {
 
     private final GamingSessionRepository sessionRepository;

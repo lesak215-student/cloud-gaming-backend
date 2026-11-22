@@ -8,10 +8,12 @@ import app.model.User;
 import app.repository.GamingSessionRepository;
 import app.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional
 public class UserService {
 
     private final UserRepository userRepository;
@@ -76,6 +78,7 @@ public class UserService {
         if (sessionRepository.hasActiveOrPausedSessionForUser(id)) {
             throw new BusinessRuleException("Cannot delete user with an active or paused session");
         }
+        sessionRepository.deleteByUserId(id);
         userRepository.deleteById(id);
     }
 

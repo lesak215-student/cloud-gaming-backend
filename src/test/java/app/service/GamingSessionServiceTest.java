@@ -39,9 +39,9 @@ class GamingSessionServiceTest {
 
     @BeforeEach
     void setUp() {
-        sessionRepository = new InMemoryGamingSessionRepository();
-        userRepository = new InMemoryUserRepository();
-        gameRepository = new InMemoryGameRepository();
+        sessionRepository = InMemoryGamingSessionRepository.create();
+        userRepository = InMemoryUserRepository.create();
+        gameRepository = InMemoryGameRepository.create();
         sessionService = new GamingSessionService(sessionRepository, userRepository, gameRepository);
 
         standardUser = userRepository.save(new StandardUser(null, "Alice", "alice@example.com"));
