@@ -24,8 +24,8 @@ public class InMemoryGamingSessionRepository implements GamingSessionRepository 
             id = idGenerator.incrementAndGet();
             session = new GamingSession(
                     id,
-                    session.getUserId(),
-                    session.getGameId(),
+                    session.getUser(),
+                    session.getGame(),
                     session.getStartedAt(),
                     session.getEndedAt(),
                     session.getResolution(),

@@ -5,6 +5,7 @@ import app.dto.UpdateGameRequest;
 import app.model.Game;
 import app.model.SubscriptionTier;
 import app.service.GameService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,7 +31,7 @@ public class GameController {
     }
 
     @PostMapping
-    public ResponseEntity<Game> create(@RequestBody CreateGameRequest request) {
+    public ResponseEntity<Game> create(@Valid @RequestBody CreateGameRequest request) {
         int maxSlots = request.maxSlots != null ? request.maxSlots : 0;
         Game game = gameService.create(request.title, request.genre, request.requiredTier, maxSlots);
         return ResponseEntity.status(HttpStatus.CREATED).body(game);
@@ -49,7 +50,7 @@ public class GameController {
     }
 
     @PutMapping("/{id}")
-    public Game update(@PathVariable Long id, @RequestBody UpdateGameRequest request) {
+    public Game update(@PathVariable Long id, @Valid @RequestBody UpdateGameRequest request) {
         int maxSlots = request.maxSlots != null ? request.maxSlots : 0;
         return gameService.update(id, request.title, request.genre, request.requiredTier, maxSlots);
     }

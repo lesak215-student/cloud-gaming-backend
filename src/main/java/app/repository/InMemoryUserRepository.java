@@ -31,10 +31,7 @@ public class InMemoryUserRepository implements UserRepository {
     }
 
     private User reinstanceWithId(User user, Long id) {
-        if (user.getSubscriptionTier() == SubscriptionTier.PREMIUM) {
-            return new PremiumUser(id, user.getName(), user.getEmail());
-        }
-        return new StandardUser(id, user.getName(), user.getEmail());
+        return new User(id, user.getName(), user.getEmail(), user.getSubscriptionTier());
     }
 
     @Override

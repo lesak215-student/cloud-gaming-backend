@@ -4,9 +4,7 @@ import app.exception.BusinessRuleException;
 import app.exception.ResourceNotFoundException;
 import app.exception.ValidationException;
 import app.model.GamingSession;
-import app.model.PremiumUser;
 import app.model.SessionStatus;
-import app.model.StandardUser;
 import app.model.SubscriptionTier;
 import app.model.User;
 import app.repository.GamingSessionRepository;
@@ -37,7 +35,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("create() should create StandardUser when tier is BASIC")
+    @DisplayName("create() should create User when tier is BASIC")
     void shouldCreateStandardUser() {
         User user = userService.create("Alice", "alice@example.com", SubscriptionTier.BASIC);
 
@@ -45,13 +43,12 @@ class UserServiceTest {
         assertEquals("Alice", user.getName());
         assertEquals("alice@example.com", user.getEmail());
         assertEquals(SubscriptionTier.BASIC, user.getSubscriptionTier());
-        assertInstanceOf(StandardUser.class, user);
         assertEquals(1, user.getMaxConcurrentSessions());
         assertEquals(1080, user.getMaxStreamingResolution());
     }
 
     @Test
-    @DisplayName("create() should create PremiumUser when tier is PREMIUM")
+    @DisplayName("create() should create User when tier is PREMIUM")
     void shouldCreatePremiumUser() {
         User user = userService.create("Bob", "bob@example.com", SubscriptionTier.PREMIUM);
 
@@ -59,7 +56,6 @@ class UserServiceTest {
         assertEquals("Bob", user.getName());
         assertEquals("bob@example.com", user.getEmail());
         assertEquals(SubscriptionTier.PREMIUM, user.getSubscriptionTier());
-        assertInstanceOf(PremiumUser.class, user);
         assertEquals(3, user.getMaxConcurrentSessions());
         assertEquals(2160, user.getMaxStreamingResolution());
     }
@@ -127,7 +123,6 @@ class UserServiceTest {
         assertEquals("Alice Smith", updated.getName());
         assertEquals("alice.smith@example.com", updated.getEmail());
         assertEquals(SubscriptionTier.PREMIUM, updated.getSubscriptionTier());
-        assertInstanceOf(PremiumUser.class, updated);
     }
 
     @Test

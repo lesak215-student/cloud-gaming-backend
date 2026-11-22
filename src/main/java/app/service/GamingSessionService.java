@@ -63,7 +63,7 @@ public class GamingSessionService {
             throw new BusinessRuleException("All " + game.getMaxSlots() + " slots are occupied for game: " + game.getTitle());
         }
 
-        GamingSession session = new GamingSession(null, userId, gameId, Instant.now(), null, effectiveResolution, SessionStatus.ACTIVE);
+        GamingSession session = new GamingSession(null, user, game, Instant.now(), null, effectiveResolution, SessionStatus.ACTIVE);
         return sessionRepository.save(session);
     }
 

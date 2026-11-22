@@ -5,6 +5,7 @@ import app.dto.UpdateUserRequest;
 import app.model.SubscriptionTier;
 import app.model.User;
 import app.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,7 +31,7 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<User> create(@RequestBody CreateUserRequest request) {
+    public ResponseEntity<User> create(@Valid @RequestBody CreateUserRequest request) {
         User user = userService.create(request.name, request.email, request.subscriptionTier);
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
@@ -46,7 +47,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public User update(@PathVariable Long id, @RequestBody UpdateUserRequest request) {
+    public User update(@PathVariable Long id, @Valid @RequestBody UpdateUserRequest request) {
         return userService.update(id, request.name, request.email, request.subscriptionTier);
     }
 

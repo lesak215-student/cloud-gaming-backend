@@ -3,8 +3,6 @@ package app.service;
 import app.exception.BusinessRuleException;
 import app.exception.ResourceNotFoundException;
 import app.exception.ValidationException;
-import app.model.PremiumUser;
-import app.model.StandardUser;
 import app.model.SubscriptionTier;
 import app.model.User;
 import app.repository.GamingSessionRepository;
@@ -94,9 +92,6 @@ public class UserService {
     }
 
     private User createUserInstance(Long id, String name, String email, SubscriptionTier tier) {
-        if (tier == SubscriptionTier.PREMIUM) {
-            return new PremiumUser(id, name, email);
-        }
-        return new StandardUser(id, name, email);
+        return new User(id, name, email, tier);
     }
 }

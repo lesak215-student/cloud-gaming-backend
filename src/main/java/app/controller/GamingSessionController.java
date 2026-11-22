@@ -5,6 +5,7 @@ import app.dto.UpdateSessionRequest;
 import app.model.GamingSession;
 import app.model.SessionStatus;
 import app.service.GamingSessionService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,7 +31,7 @@ public class GamingSessionController {
     }
 
     @PostMapping
-    public ResponseEntity<GamingSession> start(@RequestBody StartSessionRequest request) {
+    public ResponseEntity<GamingSession> start(@Valid @RequestBody StartSessionRequest request) {
         GamingSession session = sessionService.start(request.userId, request.gameId, request.resolution);
         return ResponseEntity.status(HttpStatus.CREATED).body(session);
     }
@@ -48,7 +49,7 @@ public class GamingSessionController {
     }
 
     @PutMapping("/{id}")
-    public GamingSession update(@PathVariable Long id, @RequestBody UpdateSessionRequest request) {
+    public GamingSession update(@PathVariable Long id, @Valid @RequestBody UpdateSessionRequest request) {
         return sessionService.update(id, request.resolution);
     }
 
