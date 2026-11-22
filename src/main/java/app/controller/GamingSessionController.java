@@ -50,7 +50,7 @@ public class GamingSessionController {
 
     @PutMapping("/{id}")
     public GamingSession update(@PathVariable Long id, @Valid @RequestBody UpdateSessionRequest request) {
-        return sessionService.update(id, request.resolution);
+        return sessionService.update(id, request.resolution, request.notes);
     }
 
     @DeleteMapping("/{id}")

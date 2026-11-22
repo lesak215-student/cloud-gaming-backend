@@ -210,6 +210,17 @@ class GamingSessionServiceTest {
     }
 
     @Test
+    @DisplayName("update() should update notes on active session")
+    void shouldUpdateSessionNotes() {
+        GamingSession session = sessionService.start(standardUser.getId(), basicGame.getId(), 720);
+        assertNull(session.getNotes());
+
+        GamingSession updated = sessionService.update(session.getId(), null, "Adjusted bitrate due to unstable connection");
+        assertEquals("Adjusted bitrate due to unstable connection", updated.getNotes());
+        assertEquals(720, updated.getResolution());
+    }
+
+    @Test
     @DisplayName("delete() should only delete COMPLETED session")
     void shouldDeleteCompletedSession() {
         GamingSession session = sessionService.start(standardUser.getId(), basicGame.getId(), 1080);

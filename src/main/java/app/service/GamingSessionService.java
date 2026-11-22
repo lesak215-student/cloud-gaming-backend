@@ -97,19 +97,40 @@ public class GamingSessionService {
     }
 
     public GamingSession update(Long id, Integer newResolution) {
-        if (newResolution == null || newResolution <= 0) {
+        return update(id, newResolution, null);
+    }
+
+    public GamingSession update(Long id, Integer newResolution, String notes) {
+        if (newResolution == null && notes == null) {
+            throw new ValidationException("At least one field (resolution or notes) must be provided for update");
+        }
+        if (newResolution != null && newResolution <= 0) {
             throw new ValidationException("New resolution must be a positive integer");
         }
         GamingSession session = getById(id);
         if (session.getStatus() == SessionStatus.COMPLETED) {
-            throw new BusinessRuleException("Cannot modify resolution of completed session");
+            throw new BusinessRuleException("Cannot modify completed session");
         }
-        User user = userRepository.findById(session.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + session.getUserId()));
-        if (newResolution > user.getMaxStreamingResolution()) {
-            throw new BusinessRuleException("Resolution " + newResolution + "p exceeds maximum allowed for user tier: " + user.getMaxStreamingResolution() + "p");
+        int effectiveResolution = session.getResolution();
+        if (newResolution != null) {
+            User user = userRepository.findById(session.getUserId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + session.getUserId()));
+            if (newResolution > user.getMaxStreamingResolution()) {
+                throw new BusinessRuleException("Resolution " + newResolution + "p exceeds maximum allowed for user tier: " + user.getMaxStreamingResolution() + "p");
+            }
+            effectiveResolution = newResolution;
         }
-        GamingSession updated = session.withResolution(newResolution);
+        String effectiveNotes = (notes != null) ? notes : session.getNotes();
+        GamingSession updated = new GamingSession(
+                session.getId(),
+                session.getUser(),
+                session.getGame(),
+                session.getStartedAt(),
+                session.getEndedAt(),
+                effectiveResolution,
+                session.getStatus(),
+                effectiveNotes
+        );
         return sessionRepository.save(updated);
     }
 

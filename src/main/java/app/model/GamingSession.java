@@ -46,9 +46,16 @@ public class GamingSession {
     @Column(nullable = false)
     private SessionStatus status;
 
+    @Column(name = "notes")
+    private String notes;
+
     public GamingSession() {}
 
     public GamingSession(Long id, User user, Game game, Instant startedAt, Instant endedAt, int resolution, SessionStatus status) {
+        this(id, user, game, startedAt, endedAt, resolution, status, null);
+    }
+
+    public GamingSession(Long id, User user, Game game, Instant startedAt, Instant endedAt, int resolution, SessionStatus status, String notes) {
         this.id = id;
         this.user = user;
         this.game = game;
@@ -56,9 +63,14 @@ public class GamingSession {
         this.endedAt = endedAt;
         this.resolution = resolution;
         this.status = status;
+        this.notes = notes;
     }
 
     public GamingSession(Long id, Long userId, Long gameId, Instant startedAt, Instant endedAt, int resolution, SessionStatus status) {
+        this(id, userId, gameId, startedAt, endedAt, resolution, status, null);
+    }
+
+    public GamingSession(Long id, Long userId, Long gameId, Instant startedAt, Instant endedAt, int resolution, SessionStatus status, String notes) {
         this.id = id;
         this.user = userId != null ? new User(userId, null, null, null) : null;
         this.game = gameId != null ? new Game(gameId, null, null, null, 0) : null;
@@ -66,6 +78,7 @@ public class GamingSession {
         this.endedAt = endedAt;
         this.resolution = resolution;
         this.status = status;
+        this.notes = notes;
     }
 
     public Long getId() {
@@ -132,6 +145,14 @@ public class GamingSession {
         this.status = status;
     }
 
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
     public boolean isActive() {
         return status == SessionStatus.ACTIVE;
     }
@@ -145,19 +166,27 @@ public class GamingSession {
     }
 
     public GamingSession paused() {
-        return new GamingSession(id, user, game, startedAt, endedAt, resolution, SessionStatus.PAUSED);
+        return new GamingSession(id, user, game, startedAt, endedAt, resolution, SessionStatus.PAUSED, notes);
     }
 
     public GamingSession resumed() {
-        return new GamingSession(id, user, game, startedAt, endedAt, resolution, SessionStatus.ACTIVE);
+        return new GamingSession(id, user, game, startedAt, endedAt, resolution, SessionStatus.ACTIVE, notes);
     }
 
     public GamingSession completed(Instant endedAt) {
-        return new GamingSession(id, user, game, startedAt, endedAt, resolution, SessionStatus.COMPLETED);
+        return new GamingSession(id, user, game, startedAt, endedAt, resolution, SessionStatus.COMPLETED, notes);
+    }
+
+    public GamingSession completed(Instant endedAt, String notes) {
+        return new GamingSession(id, user, game, startedAt, endedAt, resolution, SessionStatus.COMPLETED, notes);
     }
 
     public GamingSession withResolution(int newResolution) {
-        return new GamingSession(id, user, game, startedAt, endedAt, newResolution, status);
+        return new GamingSession(id, user, game, startedAt, endedAt, newResolution, status, notes);
+    }
+
+    public GamingSession withNotes(String notes) {
+        return new GamingSession(id, user, game, startedAt, endedAt, resolution, status, notes);
     }
 
     @Override
