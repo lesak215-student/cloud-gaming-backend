@@ -34,11 +34,20 @@ public interface GamingSessionRepository extends JpaRepository<GamingSession, Lo
         return countActiveOrPausedSessionsByGameId(gameId) > 0;
     }
 
-    List<GamingSession> findByGameId(Long gameId);
+    @Query("SELECT s FROM GamingSession s JOIN FETCH s.user JOIN FETCH s.game")
+    List<GamingSession> findAllDetailed();
 
-    List<GamingSession> findByUserId(Long userId);
+    @Query("SELECT s FROM GamingSession s WHERE s.game.id = :gameId")
+    List<GamingSession> findByGameId(@Param("gameId") Long gameId);
 
-    void deleteByUserId(Long userId);
+    @Query("SELECT s FROM GamingSession s WHERE s.user.id = :userId")
+    List<GamingSession> findByUserId(@Param("userId") Long userId);
 
-    void deleteByGameId(Long gameId);
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM GamingSession s WHERE s.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM GamingSession s WHERE s.game.id = :gameId")
+    void deleteByGameId(@Param("gameId") Long gameId);
 }

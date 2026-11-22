@@ -43,6 +43,11 @@ public class GamingSessionController {
         return sessionService.getAll(userId, gameId, status);
     }
 
+    @GetMapping("/detailed")
+    public List<GamingSession> getAllDetailed() {
+        return sessionService.getAllDetailed();
+    }
+
     @GetMapping("/{id}")
     public GamingSession getById(@PathVariable Long id) {
         return sessionService.getById(id);

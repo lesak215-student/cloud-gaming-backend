@@ -146,6 +146,10 @@ public class GamingSessionService {
         return sessionRepository.findAll(userIdFilter, gameIdFilter, statusFilter);
     }
 
+    public List<GamingSession> getAllDetailed() {
+        return sessionRepository.findAllDetailed();
+    }
+
     public void delete(Long id) {
         GamingSession session = getById(id);
         if (session.getStatus() != SessionStatus.COMPLETED) {

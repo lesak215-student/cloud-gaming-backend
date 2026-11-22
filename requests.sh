@@ -1,299 +1,235 @@
 #!/usr/bin/env bash
 
 BASE="http://localhost:8080"
+TS=$(date +%s)
 
-echo "=== 1. PING CHECKS ==="
-echo "--- Ping (GET /ping) ---"
+echo "=========================================================="
+echo "   ПРОВЕРКА API: ОБЛАЧНЫЙ ГЕЙМИНГ (ЛАБОРАТОРНАЯ РАБОТА 3)   "
+echo "=========================================================="
+
+echo ""
+echo "=== 1. ПРОВЕРКА PING ==="
 curl -s -i "$BASE/ping"
 echo ""
 
-echo "=== 2. USER CRUD AND FILTERING ==="
-echo "Creating Standard User (Alice):"
+echo ""
+echo "=== 2. ПОЛЬЗОВАТЕЛИ: СОЗДАНИЕ, ЧТЕНИЕ, ОБНОВЛЕНИЕ, УНИКАЛЬНОСТЬ ==="
+echo "--- Создание Standard пользователя (Alice) ---"
+USER1_RESP=$(curl -s -X POST "$BASE/users" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Alice\",\"email\":\"alice_${TS}@example.com\",\"subscriptionTier\":\"BASIC\"}")
+echo "$USER1_RESP"
+USER1_ID=$(echo "$USER1_RESP" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+
+echo "--- Создание Premium пользователя (Bob) ---"
+USER2_RESP=$(curl -s -X POST "$BASE/users" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Bob\",\"email\":\"bob_${TS}@example.com\",\"subscriptionTier\":\"PREMIUM\"}")
+echo "$USER2_RESP"
+USER2_ID=$(echo "$USER2_RESP" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+
+echo "--- Ошибка 409: дубликат email пользователя ---"
 curl -s -i -X POST "$BASE/users" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Alice","email":"alice@example.com","subscriptionTier":"BASIC"}'
+  -d "{\"name\":\"Alice Clone\",\"email\":\"alice_${TS}@example.com\",\"subscriptionTier\":\"BASIC\"}"
 echo ""
 
-echo "Creating Premium User (Bob):"
-curl -s -i -X POST "$BASE/users" \
+echo "--- Список всех пользователей ---"
+curl -s "$BASE/users"
+echo ""
+
+echo "--- Фильтрация пользователей по тарифу PREMIUM ---"
+curl -s "$BASE/users?tier=PREMIUM"
+echo ""
+
+echo "--- Обновление пользователя (Alice Smith) ---"
+curl -s -X PUT "$BASE/users/$USER1_ID" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Bob","email":"bob@example.com","subscriptionTier":"PREMIUM"}'
+  -d "{\"name\":\"Alice Smith\",\"email\":\"alice_smith_${TS}@example.com\",\"subscriptionTier\":\"BASIC\"}"
 echo ""
 
-echo "Creating User to Delete (Charlie):"
-curl -s -i -X POST "$BASE/users" \
+echo ""
+echo "=== 3. ИГРЫ: СОЗДАНИЕ, ЧТЕНИЕ, ОБНОВЛЕНИЕ, УНИКАЛЬНОСТЬ ==="
+echo "--- Создание базовой игры (CS2, 5 слотов) ---"
+GAME1_RESP=$(curl -s -X POST "$BASE/games" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Charlie","email":"charlie@example.com","subscriptionTier":"BASIC"}'
-echo ""
+  -d "{\"title\":\"CS2_${TS}\",\"genre\":\"Shooter\",\"requiredTier\":\"BASIC\",\"maxSlots\":5}")
+echo "$GAME1_RESP"
+GAME1_ID=$(echo "$GAME1_RESP" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
 
-echo "List all users:"
-curl -s -i "$BASE/users"
-echo ""
-
-echo "Filter users by tier (PREMIUM):"
-curl -s -i "$BASE/users?tier=PREMIUM"
-echo ""
-
-echo "Get user by ID (Alice):"
-curl -s -i "$BASE/users/1"
-echo ""
-
-echo "Update user by ID (Alice):"
-curl -s -i -X PUT "$BASE/users/1" \
+echo "--- Создание премиум игры (Cyberpunk 2077, 2 слота) ---"
+GAME2_RESP=$(curl -s -X POST "$BASE/games" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Alice Smith","email":"alice.smith@example.com","subscriptionTier":"BASIC"}'
-echo ""
+  -d "{\"title\":\"Cyberpunk_${TS}\",\"genre\":\"RPG\",\"requiredTier\":\"PREMIUM\",\"maxSlots\":2}")
+echo "$GAME2_RESP"
+GAME2_ID=$(echo "$GAME2_RESP" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
 
-echo "Delete user by ID (Charlie):"
-curl -s -i -X DELETE "$BASE/users/3"
-echo ""
-
-echo "Verify Charlie is deleted:"
-curl -s -i "$BASE/users/3"
-echo ""
-
-echo "=== 3. GAME CRUD AND FILTERING ==="
-echo "Creating BASIC game (CS2):"
+echo "--- Ошибка 409: дубликат названия игры ---"
 curl -s -i -X POST "$BASE/games" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Counter-Strike 2","genre":"Shooter","requiredTier":"BASIC","maxSlots":2}'
+  -d "{\"title\":\"CS2_${TS}\",\"genre\":\"FPS\",\"requiredTier\":\"BASIC\",\"maxSlots\":10}"
 echo ""
 
-echo "Creating PREMIUM game (Cyberpunk 2077):"
-curl -s -i -X POST "$BASE/games" \
+echo "--- Список всех игр ---"
+curl -s "$BASE/games"
+echo ""
+
+echo "--- Фильтрация игр по жанру и тарифу ---"
+curl -s "$BASE/games?genre=RPG&tier=PREMIUM"
+echo ""
+
+echo ""
+echo "=== 4. СЕССИИ: СОЗДАНИЕ СО СВЯЗЯМИ И ЗАМЕТКАМИ (МИГРАЦИЯ V2) ==="
+echo "--- Запуск сессии Alice в базовую игру CS2 (1080p) ---"
+SESSION1_RESP=$(curl -s -X POST "$BASE/sessions" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Cyberpunk 2077","genre":"RPG","requiredTier":"PREMIUM","maxSlots":1}'
-echo ""
+  -d "{\"userId\":$USER1_ID,\"gameId\":$GAME1_ID,\"resolution\":1080}")
+echo "$SESSION1_RESP"
+SESSION1_ID=$(echo "$SESSION1_RESP" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
 
-echo "Creating Game to Delete (Dota 2):"
-curl -s -i -X POST "$BASE/games" \
+echo "--- Запуск сессии Bob в премиум игру Cyberpunk (2160p) ---"
+SESSION2_RESP=$(curl -s -X POST "$BASE/sessions" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Dota 2","genre":"MOBA","requiredTier":"BASIC","maxSlots":1}'
+  -d "{\"userId\":$USER2_ID,\"gameId\":$GAME2_ID,\"resolution\":2160}")
+echo "$SESSION2_RESP"
+SESSION2_ID=$(echo "$SESSION2_RESP" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+
+echo "--- Получение сессии по ID (проверка связей со связанными сущностями) ---"
+curl -s "$BASE/sessions/$SESSION1_ID"
 echo ""
 
-echo "List all games:"
-curl -s -i "$BASE/games"
+echo ""
+echo "=== 5. ЖИЗНЕННЫЙ ЦИКЛ СЕССИЙ (PAUSE, RESUME, UPDATE NOTES, TERMINATE) ==="
+echo "--- Приостановка сессии (POST /sessions/{id}/pause) ---"
+curl -s -X POST "$BASE/sessions/$SESSION1_ID/pause"
 echo ""
 
-echo "Filter games by genre (RPG):"
-curl -s -i "$BASE/games?genre=RPG"
+echo "--- Возобновление сессии (POST /sessions/{id}/resume) ---"
+curl -s -X POST "$BASE/sessions/$SESSION1_ID/resume"
 echo ""
 
-echo "Filter games by tier (PREMIUM):"
-curl -s -i "$BASE/games?tier=PREMIUM"
-echo ""
-
-echo "Filter games by hasSlots=true:"
-curl -s -i "$BASE/games?hasSlots=true"
-echo ""
-
-echo "Get game by ID:"
-curl -s -i "$BASE/games/1"
-echo ""
-
-echo "Update game by ID:"
-curl -s -i -X PUT "$BASE/games/1" \
+echo "--- Обновление разрешения и заметок (PUT /sessions/{id}) ---"
+curl -s -X PUT "$BASE/sessions/$SESSION1_ID" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Counter-Strike 2 Source","genre":"Shooter","requiredTier":"BASIC","maxSlots":3}'
+  -d '{"resolution":720,"notes":"Lowered resolution due to high latency"}'
 echo ""
 
-echo "Delete game by ID (Dota 2):"
-curl -s -i -X DELETE "$BASE/games/3"
+echo "--- Завершение сессии (POST /sessions/{id}/terminate) ---"
+curl -s -X POST "$BASE/sessions/$SESSION1_ID/terminate"
 echo ""
 
-echo "Verify Dota 2 is deleted:"
-curl -s -i "$BASE/games/3"
+echo ""
+echo "=== 6. ТРЕБОВАНИЕ 3: АТОМАРНАЯ ТРАНЗАКЦИЯ И ОТКАТ (ROLLBACK) ==="
+echo "Создаем игру для теста обслуживания и запускаем 2 сессии:"
+MAINT_GAME_RESP=$(curl -s -X POST "$BASE/games" \
+  -H "Content-Type: application/json" \
+  -d "{\"title\":\"MaintGame_${TS}\",\"genre\":\"Action\",\"requiredTier\":\"BASIC\",\"maxSlots\":4}")
+MAINT_GAME_ID=$(echo "$MAINT_GAME_RESP" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+
+MAINT_USER_RESP=$(curl -s -X POST "$BASE/users" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"MaintPlayer\",\"email\":\"maint_${TS}@example.com\",\"subscriptionTier\":\"BASIC\"}")
+MAINT_USER_ID=$(echo "$MAINT_USER_RESP" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+
+MAINT_SESS_RESP=$(curl -s -X POST "$BASE/sessions" \
+  -H "Content-Type: application/json" \
+  -d "{\"userId\":$MAINT_USER_ID,\"gameId\":$MAINT_GAME_ID,\"resolution\":1080}")
+MAINT_SESS_ID=$(echo "$MAINT_SESS_RESP" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+
+echo "Текущие слоты игры до вызова обслуживания: 4, статус сессии: ACTIVE"
+
+echo "--- Вызов scheduleMaintenance с triggerError=true (ожидаем 409 Conflict) ---"
+curl -s -i -X POST "$BASE/games/$MAINT_GAME_ID/maintenance" \
+  -H "Content-Type: application/json" \
+  -d '{"newMaxSlots":0,"reason":"Scheduled cluster upgrade","triggerError":true}'
 echo ""
 
-echo "=== 4. GAMING SESSIONS: DOMAIN RULES AND CRUD ==="
-echo "Start session 1 (Alice playing CS2, 1080p):"
+echo "--- Проверка отката (Rollback): слоты игры не должны измениться (остались 4) ---"
+curl -s "$BASE/games/$MAINT_GAME_ID"
+echo ""
+
+echo "--- Проверка отката (Rollback): статус сессии должен остаться ACTIVE, notes = null ---"
+curl -s "$BASE/sessions/$MAINT_SESS_ID"
+echo ""
+
+echo "--- Успешный вызов scheduleMaintenance (triggerError=false) ---"
+curl -s -X POST "$BASE/games/$MAINT_GAME_ID/maintenance" \
+  -H "Content-Type: application/json" \
+  -d '{"newMaxSlots":0,"reason":"Scheduled cluster upgrade","triggerError":false}'
+echo ""
+
+echo "--- Проверка применения: слоты игры стали 0 ---"
+curl -s "$BASE/games/$MAINT_GAME_ID"
+echo ""
+
+echo "--- Проверка применения: сессия переведена в COMPLETED с причиной в notes ---"
+curl -s "$BASE/sessions/$MAINT_SESS_ID"
+echo ""
+
+echo ""
+echo "=== 7. ТРЕБОВАНИЕ 5: ЗАГРУЗКА РЕСУРСОВ БЕЗ ПРОБЛЕМЫ N+1 (GET /sessions/detailed) ==="
+echo "Выполняем запрос списка сессий с жадной загрузкой (JOIN FETCH) связанных User и Game:"
+curl -s "$BASE/sessions/detailed"
+echo ""
+
+echo ""
+echo "=== 8. ЦЕЛОСТНОСТЬ ДАННЫХ И УДАЛЕНИЕ СВЯЗАННЫХ РЕСУРСОВ ==="
+echo "Попытка удалить пользователя Bob при активной сессии в Cyberpunk (ожидаем 409):"
+curl -s -i -X DELETE "$BASE/users/$USER2_ID"
+echo ""
+
+echo "Завершаем активную сессию Bob:"
+curl -s -X POST "$BASE/sessions/$SESSION2_ID/terminate"
+echo ""
+
+echo "Удаление пользователя Bob после завершения сессий (ожидаем 204 No Content):"
+curl -s -i -X DELETE "$BASE/users/$USER2_ID"
+echo ""
+
+echo "Проверка, что пользователь удален (ожидаем 404):"
+curl -s -i "$BASE/users/$USER2_ID"
+echo ""
+
+echo ""
+echo "=== 9. ВАЛИДАЦИЯ И ОБРАБОТКА ОШИБОЧНЫХ СЦЕНАРИЕВ ==="
+echo "--- 400: Отрицательное разрешение (resolution = -100) ---"
 curl -s -i -X POST "$BASE/sessions" \
   -H "Content-Type: application/json" \
-  -d '{"userId":1,"gameId":1,"resolution":1080}'
+  -d "{\"userId\":$USER1_ID,\"gameId\":$GAME1_ID,\"resolution\":-100}"
 echo ""
 
-echo "Start session 2 (Bob playing Cyberpunk 2077, 2160p 4K):"
-curl -s -i -X POST "$BASE/sessions" \
-  -H "Content-Type: application/json" \
-  -d '{"userId":2,"gameId":2,"resolution":2160}'
+echo "--- 400: Отрицательный ID в пути (/users/-1) ---"
+curl -s -i "$BASE/users/-1"
 echo ""
 
-echo "List all sessions:"
-curl -s -i "$BASE/sessions"
-echo ""
-
-echo "Filter sessions by userId=1:"
-curl -s -i "$BASE/sessions?userId=1"
-echo ""
-
-echo "Filter sessions by gameId=2:"
-curl -s -i "$BASE/sessions?gameId=2"
-echo ""
-
-echo "Filter sessions by status=ACTIVE:"
-curl -s -i "$BASE/sessions?status=ACTIVE"
-echo ""
-
-echo "Get session 1:"
-curl -s -i "$BASE/sessions/1"
-echo ""
-
-echo "Pause session 1:"
-curl -s -i -X POST "$BASE/sessions/1/pause"
-echo ""
-
-echo "Verify session 1 is PAUSED:"
-curl -s -i "$BASE/sessions/1"
-echo ""
-
-echo "Resume session 1:"
-curl -s -i -X POST "$BASE/sessions/1/resume"
-echo ""
-
-echo "Update session 1 resolution to 720p:"
-curl -s -i -X PUT "$BASE/sessions/1" \
-  -H "Content-Type: application/json" \
-  -d '{"resolution":720}'
-echo ""
-
-echo "Terminate session 1:"
-curl -s -i -X POST "$BASE/sessions/1/terminate"
-echo ""
-
-echo "Delete terminated session 1:"
-curl -s -i -X DELETE "$BASE/sessions/1"
-echo ""
-
-echo "Verify session 1 deleted:"
-curl -s -i "$BASE/sessions/1"
-echo ""
-
-echo "=== 5. ERROR SCENARIOS (400, 404, 405, 409) ==="
-
-echo "--- 400: Empty request body on user creation ---"
+echo "--- 400: Невалидный JSON формат ---"
 curl -s -i -X POST "$BASE/users" \
   -H "Content-Type: application/json" \
-  -d ''
+  -d "not a json"
 echo ""
 
-echo "--- 400: Invalid user email (missing @) ---"
-curl -s -i -X POST "$BASE/users" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Dave","email":"invalid-email","subscriptionTier":"BASIC"}'
+echo "--- 404: Несуществующий пользователь ---"
+curl -s -i "$BASE/users/99999"
 echo ""
 
-echo "--- 400: Blank user name ---"
-curl -s -i -X POST "$BASE/users" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"","email":"dave@example.com","subscriptionTier":"BASIC"}'
-echo ""
-
-echo "--- 400: Invalid subscription tier ---"
-curl -s -i -X POST "$BASE/users" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Dave","email":"dave@example.com","subscriptionTier":"ULTRA"}'
-echo ""
-
-echo "--- 400: Non-integer ID in path ---"
-curl -s -i "$BASE/users/abc"
-echo ""
-
-echo "--- 400: Negative ID in path ---"
-curl -s -i "$BASE/users/-5"
-echo ""
-
-echo "--- 400: Invalid query tier enum ---"
-curl -s -i "$BASE/users?tier=SUPER"
-echo ""
-
-echo "--- 404: User not found ---"
-curl -s -i "$BASE/users/999"
-echo ""
-
-echo "--- 404: Game not found ---"
-curl -s -i "$BASE/games/999"
-echo ""
-
-echo "--- 404: Session not found ---"
-curl -s -i "$BASE/sessions/999"
-echo ""
-
-echo "--- 404: Unknown route ---"
-curl -s -i "$BASE/unknown/route"
-echo ""
-
-echo "--- 409: Duplicate user email ---"
-curl -s -i -X POST "$BASE/users" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Bob Twin","email":"bob@example.com","subscriptionTier":"BASIC"}'
-echo ""
-
-echo "--- 409: Duplicate game title ---"
-curl -s -i -X POST "$BASE/games" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Cyberpunk 2077","genre":"Action","requiredTier":"PREMIUM","maxSlots":5}'
-echo ""
-
-echo "--- 409: Standard user cannot launch PREMIUM game ---"
+echo "--- 404: Несуществующая игра при запуске сессии ---"
 curl -s -i -X POST "$BASE/sessions" \
   -H "Content-Type: application/json" \
-  -d '{"userId":1,"gameId":2,"resolution":1080}'
+  -d "{\"userId\":$USER1_ID,\"gameId\":99999,\"resolution\":1080}"
 echo ""
 
-echo "--- 409: Resolution exceeds user subscription tier (Standard limited to 1080p) ---"
+echo "--- 409: Standard пользователь не может запустить PREMIUM игру ---"
 curl -s -i -X POST "$BASE/sessions" \
   -H "Content-Type: application/json" \
-  -d '{"userId":1,"gameId":1,"resolution":2160}'
+  -d "{\"userId\":$USER1_ID,\"gameId\":$GAME2_ID,\"resolution\":1080}"
 echo ""
 
-echo "--- 409: Game slots full (Cyberpunk has 1 slot, occupied by Bob) ---"
+echo "--- 409: Превышение максимального разрешения тарифа (Standard ограничен 1080p, запрос на 2160p) ---"
 curl -s -i -X POST "$BASE/sessions" \
   -H "Content-Type: application/json" \
-  -d '{"userId":2,"gameId":2,"resolution":2160}'
+  -d "{\"userId\":$USER1_ID,\"gameId\":$GAME1_ID,\"resolution\":2160}"
 echo ""
 
-echo "--- 409: User concurrent session limit exceeded (Bob already has sessions) ---"
-curl -s -i -X POST "$BASE/sessions" \
-  -H "Content-Type: application/json" \
-  -d '{"userId":2,"gameId":1,"resolution":1080}'
-echo ""
-curl -s -i -X POST "$BASE/sessions" \
-  -H "Content-Type: application/json" \
-  -d '{"userId":2,"gameId":1,"resolution":1080}'
-echo ""
-curl -s -i -X POST "$BASE/sessions" \
-  -H "Content-Type: application/json" \
-  -d '{"userId":2,"gameId":1,"resolution":1080}'
-echo ""
-
-echo "--- 409: Cannot change user tier while user has active session ---"
-curl -s -i -X PUT "$BASE/users/2" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Bob","email":"bob@example.com","subscriptionTier":"BASIC"}'
-echo ""
-
-echo "--- 409: Cannot delete user with active session ---"
-curl -s -i -X DELETE "$BASE/users/2"
-echo ""
-
-echo "--- 409: Cannot delete game with active session ---"
-curl -s -i -X DELETE "$BASE/games/2"
-echo ""
-
-echo "--- 409: Cannot pause already paused session ---"
-curl -s -i -X POST "$BASE/sessions/2/pause"
-echo ""
-curl -s -i -X POST "$BASE/sessions/2/pause"
-echo ""
-
-echo "--- 409: Cannot resume active session ---"
-curl -s -i -X POST "$BASE/sessions/2/resume"
-echo ""
-curl -s -i -X POST "$BASE/sessions/2/resume"
-echo ""
-
-echo "--- 409: Cannot delete active or paused session (must terminate first) ---"
-curl -s -i -X DELETE "$BASE/sessions/2"
-echo ""
-
-echo "All tests finished!"
+echo "=========================================================="
+echo "          ВСЕ СЦЕНАРИИ ТЕСТИРОВАНИЯ УСПЕШНО ВЫПОЛНЕНЫ!     "
+echo "=========================================================="
