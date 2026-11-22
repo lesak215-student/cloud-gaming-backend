@@ -4,12 +4,14 @@ import app.exception.BusinessRuleException;
 import app.exception.ResourceNotFoundException;
 import app.exception.ValidationException;
 import app.model.Game;
+import app.model.GamingSession;
 import app.model.SubscriptionTier;
 import app.repository.GameRepository;
 import app.repository.GamingSessionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -95,6 +97,39 @@ public class GameService {
         }
         sessionRepository.deleteByGameId(id);
         gameRepository.deleteById(id);
+    }
+
+    @Transactional
+    public Game scheduleMaintenance(Long id, int newMaxSlots, String reason, Boolean triggerError) {
+        if (id == null || id <= 0) {
+            throw new ValidationException("Game id must be a positive integer");
+        }
+        if (newMaxSlots < 0) {
+            throw new ValidationException("New max slots cannot be negative");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new ValidationException("Maintenance reason cannot be empty");
+        }
+
+        Game game = getById(id);
+        Game updatedGame = game.withDetails(game.getTitle(), game.getGenre(), game.getRequiredTier(), newMaxSlots);
+        gameRepository.save(updatedGame);
+
+        List<GamingSession> activeSessions = sessionRepository.findByGameId(id).stream()
+                .filter(s -> s.isActive() || s.isPaused())
+                .toList();
+
+        Instant now = Instant.now();
+        for (GamingSession session : activeSessions) {
+            GamingSession terminated = session.completed(now, "Terminated due to maintenance: " + reason.trim());
+            sessionRepository.save(terminated);
+        }
+
+        if (Boolean.TRUE.equals(triggerError) || "trigger-error".equalsIgnoreCase(reason.trim())) {
+            throw new BusinessRuleException("Simulated error for transaction rollback during maintenance");
+        }
+
+        return updatedGame;
     }
 
     private void validateGameData(String title, String genre, SubscriptionTier requiredTier, int maxSlots) {

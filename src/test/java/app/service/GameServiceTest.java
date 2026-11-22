@@ -161,4 +161,59 @@ class GameServiceTest {
 
         assertThrows(BusinessRuleException.class, () -> gameService.delete(activeGame.getId()));
     }
+
+    @Test
+    @DisplayName("scheduleMaintenance() should update game slots and terminate all active sessions with reason")
+    void shouldExecuteMaintenanceAndTerminateActiveSessionsSuccessfully() {
+        Game game = gameService.create("Witcher 3", "RPG", SubscriptionTier.BASIC, 5);
+        GamingSession s1 = sessionRepository.save(new GamingSession(null, 1L, game.getId(), Instant.now(), null, 1080, SessionStatus.ACTIVE));
+        GamingSession s2 = sessionRepository.save(new GamingSession(null, 2L, game.getId(), Instant.now(), null, 1080, SessionStatus.PAUSED));
+
+        Game otherGame = gameService.create("Doom", "Shooter", SubscriptionTier.BASIC, 3);
+        GamingSession otherSession = sessionRepository.save(new GamingSession(null, 3L, otherGame.getId(), Instant.now(), null, 1080, SessionStatus.ACTIVE));
+
+        Game updatedGame = gameService.scheduleMaintenance(game.getId(), 0, "GPU cluster upgrade", false);
+
+        assertEquals(0, updatedGame.getMaxSlots());
+        assertEquals(0, gameService.getById(game.getId()).getMaxSlots());
+
+        GamingSession reloadedS1 = sessionRepository.findById(s1.getId()).orElseThrow();
+        assertEquals(SessionStatus.COMPLETED, reloadedS1.getStatus());
+        assertNotNull(reloadedS1.getEndedAt());
+        assertEquals("Terminated due to maintenance: GPU cluster upgrade", reloadedS1.getNotes());
+
+        GamingSession reloadedS2 = sessionRepository.findById(s2.getId()).orElseThrow();
+        assertEquals(SessionStatus.COMPLETED, reloadedS2.getStatus());
+        assertNotNull(reloadedS2.getEndedAt());
+        assertEquals("Terminated due to maintenance: GPU cluster upgrade", reloadedS2.getNotes());
+
+        // Other game session must remain unaffected
+        GamingSession reloadedOther = sessionRepository.findById(otherSession.getId()).orElseThrow();
+        assertEquals(SessionStatus.ACTIVE, reloadedOther.getStatus());
+        assertNull(reloadedOther.getNotes());
+    }
+
+    @Test
+    @DisplayName("scheduleMaintenance() should throw BusinessRuleException when triggerError is requested")
+    void shouldThrowExceptionWhenTriggerErrorSetInMaintenance() {
+        Game game = gameService.create("Cyberpunk", "RPG", SubscriptionTier.PREMIUM, 3);
+        sessionRepository.save(new GamingSession(null, 1L, game.getId(), Instant.now(), null, 2160, SessionStatus.ACTIVE));
+
+        assertThrows(BusinessRuleException.class,
+                () -> gameService.scheduleMaintenance(game.getId(), 0, "Emergency maintenance", true));
+
+        assertThrows(BusinessRuleException.class,
+                () -> gameService.scheduleMaintenance(game.getId(), 0, "trigger-error", false));
+    }
+
+    @Test
+    @DisplayName("scheduleMaintenance() should validate input parameters")
+    void shouldValidateMaintenanceInputParameters() {
+        Game game = gameService.create("Elden Ring", "RPG", SubscriptionTier.PREMIUM, 4);
+
+        assertThrows(ValidationException.class, () -> gameService.scheduleMaintenance(game.getId(), -1, "Reason", false));
+        assertThrows(ValidationException.class, () -> gameService.scheduleMaintenance(game.getId(), 0, "", false));
+        assertThrows(ValidationException.class, () -> gameService.scheduleMaintenance(game.getId(), 0, null, false));
+        assertThrows(ResourceNotFoundException.class, () -> gameService.scheduleMaintenance(999L, 0, "Reason", false));
+    }
 }

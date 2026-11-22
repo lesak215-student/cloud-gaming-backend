@@ -1,6 +1,7 @@
 package app.controller;
 
 import app.dto.CreateGameRequest;
+import app.dto.MaintenanceRequest;
 import app.dto.UpdateGameRequest;
 import app.model.Game;
 import app.model.SubscriptionTier;
@@ -53,6 +54,11 @@ public class GameController {
     public Game update(@PathVariable Long id, @Valid @RequestBody UpdateGameRequest request) {
         int maxSlots = request.maxSlots != null ? request.maxSlots : 0;
         return gameService.update(id, request.title, request.genre, request.requiredTier, maxSlots);
+    }
+
+    @PostMapping("/{id}/maintenance")
+    public Game scheduleMaintenance(@PathVariable Long id, @Valid @RequestBody MaintenanceRequest request) {
+        return gameService.scheduleMaintenance(id, request.newMaxSlots, request.reason, request.triggerError);
     }
 
     @DeleteMapping("/{id}")
