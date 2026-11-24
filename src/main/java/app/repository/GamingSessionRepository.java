@@ -50,11 +50,11 @@ public interface GamingSessionRepository extends JpaRepository<GamingSession, Lo
     @Query("SELECT s FROM GamingSession s JOIN FETCH s.user JOIN FETCH s.game WHERE s.user.id = :userId")
     List<GamingSession> findByUserId(@Param("userId") Long userId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("DELETE FROM GamingSession s WHERE s.user.id = :userId")
     void deleteByUserId(@Param("userId") Long userId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("DELETE FROM GamingSession s WHERE s.game.id = :gameId")
     void deleteByGameId(@Param("gameId") Long gameId);
 }

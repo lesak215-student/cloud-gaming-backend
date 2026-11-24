@@ -23,11 +23,6 @@ public interface GameRepository extends JpaRepository<Game, Long> {
 
     @Query("SELECT g FROM Game g WHERE " +
            "(:genre IS NULL OR LOWER(g.genre) = LOWER(:genre)) AND " +
-           "(:tier IS NULL OR g.requiredTier = :tier)")
-    List<Game> findAll(@Param("genre") String genreFilter, @Param("tier") SubscriptionTier tierFilter);
-
-    @Query("SELECT g FROM Game g WHERE " +
-           "(:genre IS NULL OR LOWER(g.genre) = LOWER(:genre)) AND " +
            "(:tier IS NULL OR g.requiredTier = :tier) AND " +
            "(:hasSlots IS NULL OR " +
            "  (:hasSlots = true AND (SELECT COUNT(s) FROM GamingSession s WHERE s.game = g AND s.status IN (app.model.SessionStatus.ACTIVE, app.model.SessionStatus.PAUSED)) < g.maxSlots) OR " +

@@ -73,9 +73,8 @@ public class UserService {
         if (id == null || id <= 0) {
             throw new ValidationException("User id must be a positive integer");
         }
-        if (!userRepository.existsById(id)) {
-            throw new ResourceNotFoundException("User not found with id: " + id);
-        }
+        userRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
         if (sessionRepository.hasActiveOrPausedSessionForUser(id)) {
             throw new BusinessRuleException("Cannot delete user with an active or paused session");
         }

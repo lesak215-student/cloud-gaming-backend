@@ -5,9 +5,7 @@ import app.exception.ResourceNotFoundException;
 import app.exception.ValidationException;
 import app.model.Game;
 import app.model.GamingSession;
-import app.model.PremiumUser;
 import app.model.SessionStatus;
-import app.model.StandardUser;
 import app.model.SubscriptionTier;
 import app.model.User;
 import app.repository.GameRepository;
@@ -44,8 +42,8 @@ class GamingSessionServiceTest {
         gameRepository = InMemoryGameRepository.create();
         sessionService = new GamingSessionService(sessionRepository, userRepository, gameRepository);
 
-        standardUser = userRepository.save(new StandardUser(null, "Alice", "alice@example.com"));
-        premiumUser = userRepository.save(new PremiumUser(null, "Bob", "bob@example.com"));
+        standardUser = userRepository.save(new User(null, "Alice", "alice@example.com", SubscriptionTier.BASIC));
+        premiumUser = userRepository.save(new User(null, "Bob", "bob@example.com", SubscriptionTier.PREMIUM));
 
         basicGame = gameRepository.save(new Game(null, "CS2", "Shooter", SubscriptionTier.BASIC, 2));
         premiumGame = gameRepository.save(new Game(null, "Cyberpunk", "RPG", SubscriptionTier.PREMIUM, 1));
@@ -147,7 +145,7 @@ class GamingSessionServiceTest {
     void shouldEnforceGameSlotsLimit() {
         sessionService.start(premiumUser.getId(), premiumGame.getId(), 1080);
 
-        User premium2 = userRepository.save(new PremiumUser(null, "Carol", "carol@example.com"));
+        User premium2 = userRepository.save(new User(null, "Carol", "carol@example.com", SubscriptionTier.PREMIUM));
 
         BusinessRuleException ex = assertThrows(BusinessRuleException.class,
                 () -> sessionService.start(premium2.getId(), premiumGame.getId(), 1080));

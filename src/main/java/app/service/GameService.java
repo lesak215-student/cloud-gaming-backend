@@ -81,9 +81,8 @@ public class GameService {
         if (id == null || id <= 0) {
             throw new ValidationException("Game id must be a positive integer");
         }
-        if (!gameRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Game not found with id: " + id);
-        }
+        gameRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Game not found with id: " + id));
         if (sessionRepository.hasActiveOrPausedSessionForGame(id)) {
             throw new BusinessRuleException("Cannot delete game that has active or paused sessions");
         }
