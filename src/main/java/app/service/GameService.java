@@ -1,0 +1,142 @@
+package app.service;
+
+import app.exception.BusinessRuleException;
+import app.exception.ResourceNotFoundException;
+import app.exception.ValidationException;
+import app.model.Game;
+import app.model.GamingSession;
+import app.model.SubscriptionTier;
+import app.repository.GameRepository;
+import app.repository.GamingSessionRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+
+@Service
+@Transactional
+public class GameService {
+
+    private final GameRepository gameRepository;
+    private final GamingSessionRepository sessionRepository;
+
+    public GameService(GameRepository gameRepository, GamingSessionRepository sessionRepository) {
+        this.gameRepository = gameRepository;
+        this.sessionRepository = sessionRepository;
+    }
+
+    public Game create(String title, String genre, SubscriptionTier requiredTier, int maxSlots) {
+        validateGameData(title, genre, requiredTier, maxSlots);
+        String trimmedTitle = title.trim();
+        if (gameRepository.findByTitle(trimmedTitle).isPresent()) {
+            throw new BusinessRuleException("Game with title already exists: " + trimmedTitle);
+        }
+        Game game = new Game(null, trimmedTitle, genre.trim(), requiredTier, maxSlots);
+        return gameRepository.save(game);
+    }
+
+    public Game update(Long id, String title, String genre, SubscriptionTier requiredTier, int maxSlots) {
+        if (id == null || id <= 0) {
+            throw new ValidationException("Game id must be a positive integer");
+        }
+        Game existing = gameRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Game not found with id: " + id));
+        validateGameData(title, genre, requiredTier, maxSlots);
+
+        String trimmedTitle = title.trim();
+        gameRepository.findByTitle(trimmedTitle).ifPresent(gameWithSameTitle -> {
+            if (!gameWithSameTitle.getId().equals(id)) {
+                throw new BusinessRuleException("Game title is already taken: " + trimmedTitle);
+            }
+        });
+
+        long activeSessions = sessionRepository.countActiveOrPausedSessionsByGameId(id);
+        if (maxSlots < activeSessions) {
+            throw new BusinessRuleException("Cannot decrease max slots below current active sessions count: " + activeSessions);
+        }
+
+        if (existing.getRequiredTier() != requiredTier && activeSessions > 0) {
+            throw new BusinessRuleException("Cannot change required tier of game that has active or paused sessions");
+        }
+
+        Game updated = existing.withDetails(trimmedTitle, genre.trim(), requiredTier, maxSlots);
+        return gameRepository.save(updated);
+    }
+
+    public Game getById(Long id) {
+        if (id == null || id <= 0) {
+            throw new ValidationException("Game id must be a positive integer");
+        }
+        return gameRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Game not found with id: " + id));
+    }
+
+    public List<Game> getAll(String genreFilter, SubscriptionTier tierFilter, Boolean hasSlotsFilter) {
+        String cleanGenre = (genreFilter != null && !genreFilter.isBlank()) ? genreFilter.trim() : null;
+        return gameRepository.findAllWithFilters(cleanGenre, tierFilter, hasSlotsFilter);
+    }
+
+    public void delete(Long id) {
+        if (id == null || id <= 0) {
+            throw new ValidationException("Game id must be a positive integer");
+        }
+        gameRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Game not found with id: " + id));
+        if (sessionRepository.hasActiveOrPausedSessionForGame(id)) {
+            throw new BusinessRuleException("Cannot delete game that has active or paused sessions");
+        }
+        sessionRepository.deleteByGameId(id);
+        gameRepository.deleteById(id);
+    }
+
+    @Transactional
+    public Game scheduleMaintenance(Long id, int newMaxSlots, String reason) {
+        if (id == null || id <= 0) {
+            throw new ValidationException("Game id must be a positive integer");
+        }
+        if (newMaxSlots < 0) {
+            throw new ValidationException("New max slots cannot be negative");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new ValidationException("Maintenance reason cannot be empty");
+        }
+
+        Game game = gameRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Game not found with id: " + id));
+
+        if (newMaxSlots >= game.getMaxSlots()) {
+            throw new BusinessRuleException("Maintenance slots must be strictly less than current slots");
+        }
+
+        Game updatedGame = game.withDetails(game.getTitle(), game.getGenre(), game.getRequiredTier(), newMaxSlots);
+        gameRepository.save(updatedGame);
+
+        List<GamingSession> activeSessions = sessionRepository.findByGameId(id).stream()
+                .filter(s -> s.isActive() || s.isPaused())
+                .toList();
+
+        Instant now = Instant.now();
+        for (GamingSession session : activeSessions) {
+            GamingSession terminated = session.completed(now, "Terminated due to maintenance: " + reason.trim());
+            sessionRepository.save(terminated);
+        }
+
+        return updatedGame;
+    }
+
+    private void validateGameData(String title, String genre, SubscriptionTier requiredTier, int maxSlots) {
+        if (title == null || title.isBlank()) {
+            throw new ValidationException("Game title cannot be empty");
+        }
+        if (genre == null || genre.isBlank()) {
+            throw new ValidationException("Game genre cannot be empty");
+        }
+        if (requiredTier == null) {
+            throw new ValidationException("Required tier must be specified");
+        }
+        if (maxSlots <= 0) {
+            throw new ValidationException("Max slots must be greater than zero");
+        }
+    }
+}

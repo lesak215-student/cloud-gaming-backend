@@ -1,0 +1,163 @@
+package app.service;
+
+import app.exception.BusinessRuleException;
+import app.exception.ResourceNotFoundException;
+import app.exception.ValidationException;
+import app.model.Game;
+import app.model.GamingSession;
+import app.model.SessionStatus;
+import app.model.User;
+import app.repository.GameRepository;
+import app.repository.GamingSessionRepository;
+import app.repository.UserRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+
+@Service
+@Transactional
+public class GamingSessionService {
+
+    private final GamingSessionRepository sessionRepository;
+    private final UserRepository userRepository;
+    private final GameRepository gameRepository;
+
+    public GamingSessionService(GamingSessionRepository sessionRepository, UserRepository userRepository, GameRepository gameRepository) {
+        this.sessionRepository = sessionRepository;
+        this.userRepository = userRepository;
+        this.gameRepository = gameRepository;
+    }
+
+    public GamingSession start(Long userId, Long gameId, Integer resolution) {
+        if (userId == null || userId <= 0) {
+            throw new ValidationException("User id must be a positive integer");
+        }
+        if (gameId == null || gameId <= 0) {
+            throw new ValidationException("Game id must be a positive integer");
+        }
+        if (resolution != null && resolution <= 0) {
+            throw new ValidationException("Resolution must be a positive integer");
+        }
+
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        Game game = gameRepository.findByIdForUpdate(gameId)
+                .orElseThrow(() -> new ResourceNotFoundException("Game not found with id: " + gameId));
+
+        int effectiveResolution = (resolution == null) ? user.getMaxStreamingResolution() : resolution;
+        if (effectiveResolution > user.getMaxStreamingResolution()) {
+            throw new BusinessRuleException("Resolution " + effectiveResolution + "p exceeds maximum allowed for user tier: " + user.getMaxStreamingResolution() + "p");
+        }
+
+        if (!user.canPlayGame(game)) {
+            throw new BusinessRuleException("User subscription tier " + user.getSubscriptionTier() + " does not allow playing game with required tier " + game.getRequiredTier());
+        }
+
+        long activeUserSessions = sessionRepository.countActiveOrPausedSessionsByUserId(userId);
+        if (activeUserSessions >= user.getMaxConcurrentSessions()) {
+            throw new BusinessRuleException("User has reached maximum concurrent sessions limit: " + user.getMaxConcurrentSessions());
+        }
+
+        long activeGameSessions = sessionRepository.countActiveOrPausedSessionsByGameId(gameId);
+        if (activeGameSessions >= game.getMaxSlots()) {
+            throw new BusinessRuleException("All " + game.getMaxSlots() + " slots are occupied for game: " + game.getTitle());
+        }
+
+        GamingSession session = new GamingSession(null, user, game, Instant.now(), null, effectiveResolution, SessionStatus.ACTIVE);
+        return sessionRepository.save(session);
+    }
+
+    public GamingSession pause(Long id) {
+        GamingSession session = getById(id);
+        if (session.getStatus() != SessionStatus.ACTIVE) {
+            throw new BusinessRuleException("Cannot pause session with status: " + session.getStatus());
+        }
+        GamingSession updated = session.paused();
+        return sessionRepository.save(updated);
+    }
+
+    public GamingSession resume(Long id) {
+        GamingSession session = getById(id);
+        if (session.getStatus() != SessionStatus.PAUSED) {
+            throw new BusinessRuleException("Cannot resume session with status: " + session.getStatus());
+        }
+        GamingSession updated = session.resumed();
+        return sessionRepository.save(updated);
+    }
+
+    public GamingSession terminate(Long id) {
+        GamingSession session = getById(id);
+        if (session.getStatus() == SessionStatus.COMPLETED) {
+            throw new BusinessRuleException("Session is already completed");
+        }
+        GamingSession updated = session.completed(Instant.now());
+        return sessionRepository.save(updated);
+    }
+
+    public GamingSession update(Long id, Integer newResolution) {
+        return update(id, newResolution, null);
+    }
+
+    public GamingSession update(Long id, Integer newResolution, String notes) {
+        if (newResolution == null && notes == null) {
+            throw new ValidationException("At least one field (resolution or notes) must be provided for update");
+        }
+        if (newResolution != null && newResolution <= 0) {
+            throw new ValidationException("New resolution must be a positive integer");
+        }
+        GamingSession session = getById(id);
+        if (session.getStatus() == SessionStatus.COMPLETED) {
+            throw new BusinessRuleException("Cannot modify completed session");
+        }
+        int effectiveResolution = session.getResolution();
+        if (newResolution != null) {
+            User user = session.getUser();
+            if (user == null && session.getUserId() != null) {
+                user = userRepository.findById(session.getUserId())
+                        .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + session.getUserId()));
+            }
+            if (user != null && newResolution > user.getMaxStreamingResolution()) {
+                throw new BusinessRuleException("Resolution " + newResolution + "p exceeds maximum allowed for user tier: " + user.getMaxStreamingResolution() + "p");
+            }
+            effectiveResolution = newResolution;
+        }
+        String effectiveNotes = (notes != null) ? notes : session.getNotes();
+        GamingSession updated = new GamingSession(
+                session.getId(),
+                session.getUser(),
+                session.getGame(),
+                session.getStartedAt(),
+                session.getEndedAt(),
+                effectiveResolution,
+                session.getStatus(),
+                effectiveNotes
+        );
+        return sessionRepository.save(updated);
+    }
+
+    public GamingSession getById(Long id) {
+        if (id == null || id <= 0) {
+            throw new ValidationException("Session id must be a positive integer");
+        }
+        return sessionRepository.findByIdWithDetails(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found with id: " + id));
+    }
+
+    public List<GamingSession> getAll(Long userIdFilter, Long gameIdFilter, SessionStatus statusFilter) {
+        return sessionRepository.findAll(userIdFilter, gameIdFilter, statusFilter);
+    }
+
+    public List<GamingSession> getAllDetailed() {
+        return sessionRepository.findAllDetailed();
+    }
+
+    public void delete(Long id) {
+        GamingSession session = getById(id);
+        if (session.getStatus() != SessionStatus.COMPLETED) {
+            throw new BusinessRuleException("Cannot delete session that is not completed; terminate it first");
+        }
+        sessionRepository.deleteById(id);
+    }
+}
