@@ -12,18 +12,25 @@ import app.repository.UserRepository;
 import app.service.GameService;
 import app.service.GamingSessionService;
 import app.service.UserService;
+import jakarta.persistence.EntityManager;
+import org.hibernate.Session;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doThrow;
 
 @SpringBootTest
 @DisplayName("Database Integration Tests - Persistence, Relationships, Rollback & N+1 Prevention")
@@ -44,19 +51,25 @@ class DatabaseIntegrationTest {
     @Autowired
     private GameRepository gameRepository;
 
-    @Autowired
+    @SpyBean
     private GamingSessionRepository sessionRepository;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    private Statistics stats;
 
     @BeforeEach
     void cleanUp() {
+        Mockito.reset(sessionRepository);
         sessionRepository.deleteAll();
         gameRepository.deleteAll();
         userRepository.deleteAll();
+        stats = entityManager.unwrap(Session.class).getSessionFactory().getStatistics();
     }
 
     @Test
-    @Transactional
-    @DisplayName("Requirements 1 & 2: Persist related User, Game and GamingSession with foreign key integrity")
+    @DisplayName("Requirements 1 & 2: Persist related User, Game and GamingSession with foreign key integrity (no test transaction)")
     void shouldPersistRelatedEntitiesWithReferentialIntegrity() {
         User user = userService.create("Alice", "alice@example.com", SubscriptionTier.PREMIUM);
         assertNotNull(user.getId());
@@ -67,7 +80,7 @@ class DatabaseIntegrationTest {
         GamingSession session = sessionService.start(user.getId(), game.getId(), 2160);
         assertNotNull(session.getId());
 
-        GamingSession reloaded = sessionRepository.findById(session.getId()).orElseThrow();
+        GamingSession reloaded = sessionService.getById(session.getId());
         assertEquals(SessionStatus.ACTIVE, reloaded.getStatus());
         assertEquals(2160, reloaded.getResolution());
         assertNotNull(reloaded.getUser());
@@ -109,11 +122,16 @@ class DatabaseIntegrationTest {
         GamingSession s2 = sessionService.start(user2.getId(), game.getId(), 1080);
         sessionService.pause(s2.getId());
 
-        // Attempt maintenance with triggerError=true
-        assertThrows(BusinessRuleException.class, () ->
-                gameService.scheduleMaintenance(game.getId(), 0, "Emergency patch", true));
+        // Simulate a database/persistence failure during session updates in scheduleMaintenance
+        doThrow(new DataIntegrityViolationException("Simulated DB constraint failure during session termination"))
+                .when(sessionRepository).save(argThat(s -> s != null && s.getStatus() == SessionStatus.COMPLETED));
 
-        // Verify in database: Game slots MUST NOT be changed
+        assertThrows(DataIntegrityViolationException.class, () ->
+                gameService.scheduleMaintenance(game.getId(), 0, "Emergency patch"));
+
+        Mockito.reset(sessionRepository);
+
+        // Verify in database: Game slots MUST NOT be changed (rolled back to 5)
         Game gameAfterRollback = gameRepository.findById(game.getId()).orElseThrow();
         assertEquals(5, gameAfterRollback.getMaxSlots(), "Game slots must remain 5 after rollback");
 
@@ -131,7 +149,7 @@ class DatabaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Requirement 5: Fetch list of resources with related objects without N+1 problem on 30+ items")
+    @DisplayName("Requirement 5: Fetch list of resources with related objects without N+1 problem (verified with query count)")
     void shouldFetchDetailedListWithoutNPlusOneProblem() {
         Game game = gameRepository.save(new Game(null, "Massive MMO", "MMO", SubscriptionTier.PREMIUM, 100));
         List<GamingSession> created = new ArrayList<>();
@@ -144,14 +162,32 @@ class DatabaseIntegrationTest {
 
         assertEquals(35, created.size());
 
+        // 1. Verify /sessions/detailed with JOIN FETCH executes exactly 1 SQL query
+        stats.clear();
         List<GamingSession> detailedList = sessionService.getAllDetailed();
-
         assertEquals(35, detailedList.size());
+        assertEquals(1, stats.getPrepareStatementCount(), "getAllDetailed() must execute exactly 1 query with JOIN FETCH");
         for (GamingSession s : detailedList) {
             assertNotNull(s.getUser(), "Related user must be pre-fetched");
             assertNotNull(s.getUser().getName(), "User name must be accessible without additional query");
             assertNotNull(s.getGame(), "Related game must be pre-fetched");
             assertEquals("Massive MMO", s.getGame().getTitle(), "Game title must be accessible without additional query");
         }
+
+        // 2. Verify standard GET /sessions (getAll) also executes exactly 1 SQL query (no N+1 and no 500)
+        stats.clear();
+        List<GamingSession> standardList = sessionService.getAll(null, null, null);
+        assertEquals(35, standardList.size());
+        assertEquals(1, stats.getPrepareStatementCount(), "getAll() must execute exactly 1 query with JOIN FETCH");
+        for (GamingSession s : standardList) {
+            assertNotNull(s.getUser().getName());
+            assertEquals("Massive MMO", s.getGame().getTitle());
+        }
+
+        // 3. Verify GET /games?hasSlots=true executes exactly 1 SQL query (no N+1 subqueries in loop)
+        stats.clear();
+        List<Game> gamesWithSlots = gameService.getAll(null, null, true);
+        assertEquals(1, gamesWithSlots.size());
+        assertEquals(1, stats.getPrepareStatementCount(), "gameService.getAll with hasSlots must execute exactly 1 SQL query");
     }
 }

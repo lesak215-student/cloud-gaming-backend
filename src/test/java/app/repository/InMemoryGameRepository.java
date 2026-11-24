@@ -14,6 +14,10 @@ import java.util.concurrent.atomic.AtomicLong;
 public class InMemoryGameRepository {
 
     public static GameRepository create() {
+        return create(null);
+    }
+
+    public static GameRepository create(GamingSessionRepository sessionRepository) {
         Map<Long, Game> storage = new ConcurrentHashMap<>();
         AtomicLong idGenerator = new AtomicLong(0);
 
@@ -29,7 +33,7 @@ public class InMemoryGameRepository {
                         storage.put(game.getId(), game);
                         yield game;
                     }
-                    case "findById" -> {
+                    case "findById", "findByIdForUpdate" -> {
                         Long id = (Long) args[0];
                         yield Optional.ofNullable(storage.get(id));
                     }
@@ -54,6 +58,26 @@ public class InMemoryGameRepository {
                             yield result;
                         }
                         yield new ArrayList<>(storage.values());
+                    }
+                    case "findAllWithFilters" -> {
+                        String genreFilter = (String) args[0];
+                        SubscriptionTier tierFilter = (SubscriptionTier) args[1];
+                        Boolean hasSlotsFilter = (Boolean) args[2];
+                        List<Game> result = new ArrayList<>();
+                        for (Game g : storage.values()) {
+                            boolean matchesGenre = (genreFilter == null) || g.getGenre().equalsIgnoreCase(genreFilter.trim());
+                            boolean matchesTier = (tierFilter == null) || g.getRequiredTier() == tierFilter;
+                            boolean matchesSlots = true;
+                            if (hasSlotsFilter != null && sessionRepository != null) {
+                                long activeCount = sessionRepository.countActiveOrPausedSessionsByGameId(g.getId());
+                                boolean hasSlots = activeCount < g.getMaxSlots();
+                                matchesSlots = (hasSlotsFilter.booleanValue() == hasSlots);
+                            }
+                            if (matchesGenre && matchesTier && matchesSlots) {
+                                result.add(g);
+                            }
+                        }
+                        yield result;
                     }
                     case "existsById" -> storage.containsKey((Long) args[0]);
                     case "deleteById" -> {

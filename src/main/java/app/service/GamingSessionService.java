@@ -41,9 +41,9 @@ public class GamingSessionService {
             throw new ValidationException("Resolution must be a positive integer");
         }
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
-        Game game = gameRepository.findById(gameId)
+        Game game = gameRepository.findByIdForUpdate(gameId)
                 .orElseThrow(() -> new ResourceNotFoundException("Game not found with id: " + gameId));
 
         int effectiveResolution = (resolution == null) ? user.getMaxStreamingResolution() : resolution;
@@ -138,7 +138,7 @@ public class GamingSessionService {
         if (id == null || id <= 0) {
             throw new ValidationException("Session id must be a positive integer");
         }
-        return sessionRepository.findById(id)
+        return sessionRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Session not found with id: " + id));
     }
 

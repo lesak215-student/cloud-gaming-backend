@@ -29,7 +29,7 @@ public class InMemoryGamingSessionRepository {
                         storage.put(session.getId(), session);
                         yield session;
                     }
-                    case "findById" -> {
+                    case "findById", "findByIdWithDetails" -> {
                         Long id = (Long) args[0];
                         yield Optional.ofNullable(storage.get(id));
                     }

@@ -13,13 +13,10 @@ public class MaintenanceRequest {
     @NotBlank(message = "Maintenance reason cannot be empty")
     public String reason;
 
-    public Boolean triggerError;
-
     public MaintenanceRequest() {}
 
-    public MaintenanceRequest(Integer newMaxSlots, String reason, Boolean triggerError) {
+    public MaintenanceRequest(Integer newMaxSlots, String reason) {
         this.newMaxSlots = newMaxSlots;
         this.reason = reason;
-        this.triggerError = triggerError;
     }
 }

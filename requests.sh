@@ -138,10 +138,10 @@ MAINT_SESS_ID=$(echo "$MAINT_SESS_RESP" | grep -o '"id":[0-9]*' | head -1 | cut 
 
 echo "Текущие слоты игры до вызова обслуживания: 4, статус сессии: ACTIVE"
 
-echo "--- Вызов scheduleMaintenance с triggerError=true (ожидаем 409 Conflict) ---"
+echo "--- Попытка некорректного вызова scheduleMaintenance (newMaxSlots >= current, ожидаем 409 Conflict) ---"
 curl -s -i -X POST "$BASE/games/$MAINT_GAME_ID/maintenance" \
   -H "Content-Type: application/json" \
-  -d '{"newMaxSlots":0,"reason":"Scheduled cluster upgrade","triggerError":true}'
+  -d '{"newMaxSlots":5,"reason":"Invalid slots increase during maintenance"}'
 echo ""
 
 echo "--- Проверка отката (Rollback): слоты игры не должны измениться (остались 4) ---"
@@ -152,10 +152,10 @@ echo "--- Проверка отката (Rollback): статус сессии д
 curl -s "$BASE/sessions/$MAINT_SESS_ID"
 echo ""
 
-echo "--- Успешный вызов scheduleMaintenance (triggerError=false) ---"
+echo "--- Успешный вызов scheduleMaintenance ---"
 curl -s -X POST "$BASE/games/$MAINT_GAME_ID/maintenance" \
   -H "Content-Type: application/json" \
-  -d '{"newMaxSlots":0,"reason":"Scheduled cluster upgrade","triggerError":false}'
+  -d '{"newMaxSlots":0,"reason":"Scheduled cluster upgrade"}'
 echo ""
 
 echo "--- Проверка применения: слоты игры стали 0 ---"
@@ -167,9 +167,17 @@ curl -s "$BASE/sessions/$MAINT_SESS_ID"
 echo ""
 
 echo ""
-echo "=== 7. ТРЕБОВАНИЕ 5: ЗАГРУЗКА РЕСУРСОВ БЕЗ ПРОБЛЕМЫ N+1 (GET /sessions/detailed) ==="
-echo "Выполняем запрос списка сессий с жадной загрузкой (JOIN FETCH) связанных User и Game:"
+echo "=== 7. ТРЕБОВАНИЕ 5: ЗАГРУЗКА РЕСУРСОВ БЕЗ ПРОБЛЕМЫ N+1 И ЗАЩИТА ОТ LAZY-500 ==="
+echo "--- Запрос списка сессий с жадной загрузкой (GET /sessions/detailed) ---"
 curl -s "$BASE/sessions/detailed"
+echo ""
+
+echo "--- Стандартный запрос списка сессий (GET /sessions) - работает без LazyInitializationException ---"
+curl -s "$BASE/sessions"
+echo ""
+
+echo "--- Фильтрация игр по наличию свободных слотов (GET /games?hasSlots=true) в 1 SQL запрос ---"
+curl -s "$BASE/games?hasSlots=true"
 echo ""
 
 echo ""

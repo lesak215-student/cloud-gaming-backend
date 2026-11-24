@@ -72,17 +72,7 @@ public class GameService {
     }
 
     public List<Game> getAll(String genreFilter, SubscriptionTier tierFilter, Boolean hasSlotsFilter) {
-        List<Game> games = gameRepository.findAll(genreFilter, tierFilter);
-        if (hasSlotsFilter == null) {
-            return games;
-        }
-        return games.stream()
-                .filter(game -> {
-                    long activeCount = sessionRepository.countActiveOrPausedSessionsByGameId(game.getId());
-                    boolean hasAvailableSlots = activeCount < game.getMaxSlots();
-                    return hasSlotsFilter.booleanValue() == hasAvailableSlots;
-                })
-                .toList();
+        return gameRepository.findAllWithFilters(genreFilter, tierFilter, hasSlotsFilter);
     }
 
     public void delete(Long id) {
@@ -100,7 +90,7 @@ public class GameService {
     }
 
     @Transactional
-    public Game scheduleMaintenance(Long id, int newMaxSlots, String reason, Boolean triggerError) {
+    public Game scheduleMaintenance(Long id, int newMaxSlots, String reason) {
         if (id == null || id <= 0) {
             throw new ValidationException("Game id must be a positive integer");
         }
@@ -111,7 +101,13 @@ public class GameService {
             throw new ValidationException("Maintenance reason cannot be empty");
         }
 
-        Game game = getById(id);
+        Game game = gameRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Game not found with id: " + id));
+
+        if (newMaxSlots >= game.getMaxSlots()) {
+            throw new BusinessRuleException("Maintenance slots must be strictly less than current slots");
+        }
+
         Game updatedGame = game.withDetails(game.getTitle(), game.getGenre(), game.getRequiredTier(), newMaxSlots);
         gameRepository.save(updatedGame);
 
@@ -123,10 +119,6 @@ public class GameService {
         for (GamingSession session : activeSessions) {
             GamingSession terminated = session.completed(now, "Terminated due to maintenance: " + reason.trim());
             sessionRepository.save(terminated);
-        }
-
-        if (Boolean.TRUE.equals(triggerError) || "trigger-error".equalsIgnoreCase(reason.trim())) {
-            throw new BusinessRuleException("Simulated error for transaction rollback during maintenance");
         }
 
         return updatedGame;

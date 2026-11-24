@@ -58,7 +58,7 @@ public class GameController {
 
     @PostMapping("/{id}/maintenance")
     public Game scheduleMaintenance(@PathVariable Long id, @Valid @RequestBody MaintenanceRequest request) {
-        return gameService.scheduleMaintenance(id, request.newMaxSlots, request.reason, request.triggerError);
+        return gameService.scheduleMaintenance(id, request.newMaxSlots, request.reason);
     }
 
     @DeleteMapping("/{id}")

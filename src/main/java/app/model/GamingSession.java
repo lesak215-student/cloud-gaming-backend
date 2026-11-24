@@ -192,13 +192,12 @@ public class GamingSession {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        GamingSession that = (GamingSession) o;
-        return Objects.equals(id, that.id);
+        if (!(o instanceof GamingSession that)) return false;
+        return id != null && id.equals(that.getId());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return getClass().hashCode();
     }
 }

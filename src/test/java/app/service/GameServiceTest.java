@@ -29,8 +29,8 @@ class GameServiceTest {
 
     @BeforeEach
     void setUp() {
-        gameRepository = InMemoryGameRepository.create();
         sessionRepository = InMemoryGamingSessionRepository.create();
+        gameRepository = InMemoryGameRepository.create(sessionRepository);
         gameService = new GameService(gameRepository, sessionRepository);
     }
 
@@ -172,7 +172,7 @@ class GameServiceTest {
         Game otherGame = gameService.create("Doom", "Shooter", SubscriptionTier.BASIC, 3);
         GamingSession otherSession = sessionRepository.save(new GamingSession(null, 3L, otherGame.getId(), Instant.now(), null, 1080, SessionStatus.ACTIVE));
 
-        Game updatedGame = gameService.scheduleMaintenance(game.getId(), 0, "GPU cluster upgrade", false);
+        Game updatedGame = gameService.scheduleMaintenance(game.getId(), 0, "GPU cluster upgrade");
 
         assertEquals(0, updatedGame.getMaxSlots());
         assertEquals(0, gameService.getById(game.getId()).getMaxSlots());
@@ -194,16 +194,16 @@ class GameServiceTest {
     }
 
     @Test
-    @DisplayName("scheduleMaintenance() should throw BusinessRuleException when triggerError is requested")
-    void shouldThrowExceptionWhenTriggerErrorSetInMaintenance() {
+    @DisplayName("scheduleMaintenance() should throw BusinessRuleException when newMaxSlots is not less than current maxSlots")
+    void shouldThrowExceptionWhenNewMaxSlotsNotLessThanCurrentSlots() {
         Game game = gameService.create("Cyberpunk", "RPG", SubscriptionTier.PREMIUM, 3);
         sessionRepository.save(new GamingSession(null, 1L, game.getId(), Instant.now(), null, 2160, SessionStatus.ACTIVE));
 
         assertThrows(BusinessRuleException.class,
-                () -> gameService.scheduleMaintenance(game.getId(), 0, "Emergency maintenance", true));
+                () -> gameService.scheduleMaintenance(game.getId(), 3, "Maintenance slots same"));
 
         assertThrows(BusinessRuleException.class,
-                () -> gameService.scheduleMaintenance(game.getId(), 0, "trigger-error", false));
+                () -> gameService.scheduleMaintenance(game.getId(), 5, "Maintenance slots greater"));
     }
 
     @Test
@@ -211,9 +211,9 @@ class GameServiceTest {
     void shouldValidateMaintenanceInputParameters() {
         Game game = gameService.create("Elden Ring", "RPG", SubscriptionTier.PREMIUM, 4);
 
-        assertThrows(ValidationException.class, () -> gameService.scheduleMaintenance(game.getId(), -1, "Reason", false));
-        assertThrows(ValidationException.class, () -> gameService.scheduleMaintenance(game.getId(), 0, "", false));
-        assertThrows(ValidationException.class, () -> gameService.scheduleMaintenance(game.getId(), 0, null, false));
-        assertThrows(ResourceNotFoundException.class, () -> gameService.scheduleMaintenance(999L, 0, "Reason", false));
+        assertThrows(ValidationException.class, () -> gameService.scheduleMaintenance(game.getId(), -1, "Reason"));
+        assertThrows(ValidationException.class, () -> gameService.scheduleMaintenance(game.getId(), 0, ""));
+        assertThrows(ValidationException.class, () -> gameService.scheduleMaintenance(game.getId(), 0, null));
+        assertThrows(ResourceNotFoundException.class, () -> gameService.scheduleMaintenance(999L, 0, "Reason"));
     }
 }

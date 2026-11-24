@@ -28,7 +28,7 @@ public class InMemoryUserRepository {
                         storage.put(user.getId(), user);
                         yield user;
                     }
-                    case "findById" -> {
+                    case "findById", "findByIdForUpdate" -> {
                         Long id = (Long) args[0];
                         yield Optional.ofNullable(storage.get(id));
                     }
