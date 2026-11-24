@@ -40,7 +40,8 @@ public class GameService {
         if (id == null || id <= 0) {
             throw new ValidationException("Game id must be a positive integer");
         }
-        Game existing = getById(id);
+        Game existing = gameRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Game not found with id: " + id));
         validateGameData(title, genre, requiredTier, maxSlots);
 
         String trimmedTitle = title.trim();
@@ -72,7 +73,8 @@ public class GameService {
     }
 
     public List<Game> getAll(String genreFilter, SubscriptionTier tierFilter, Boolean hasSlotsFilter) {
-        return gameRepository.findAllWithFilters(genreFilter, tierFilter, hasSlotsFilter);
+        String cleanGenre = (genreFilter != null && !genreFilter.isBlank()) ? genreFilter.trim() : null;
+        return gameRepository.findAllWithFilters(cleanGenre, tierFilter, hasSlotsFilter);
     }
 
     public void delete(Long id) {

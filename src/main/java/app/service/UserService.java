@@ -38,7 +38,8 @@ public class UserService {
         if (id == null || id <= 0) {
             throw new ValidationException("User id must be a positive integer");
         }
-        User existing = getById(id);
+        User existing = userRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
         validateUserData(name, email, tier);
 
         String trimmedEmail = email.trim();

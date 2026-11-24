@@ -113,9 +113,12 @@ public class GamingSessionService {
         }
         int effectiveResolution = session.getResolution();
         if (newResolution != null) {
-            User user = userRepository.findById(session.getUserId())
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + session.getUserId()));
-            if (newResolution > user.getMaxStreamingResolution()) {
+            User user = session.getUser();
+            if (user == null && session.getUserId() != null) {
+                user = userRepository.findById(session.getUserId())
+                        .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + session.getUserId()));
+            }
+            if (user != null && newResolution > user.getMaxStreamingResolution()) {
                 throw new BusinessRuleException("Resolution " + newResolution + "p exceeds maximum allowed for user tier: " + user.getMaxStreamingResolution() + "p");
             }
             effectiveResolution = newResolution;
